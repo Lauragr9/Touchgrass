@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TouchGrass – Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:#DDE4D6;color:#14281C;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font-family:inherit}
+button{cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #2F7D3B;outline-offset:2px}
+h1,h2,h3,p{margin:0}
+.d{font-family:'Bricolage Grotesque',Inter,system-ui,sans-serif}
+.muted{color:#56675B}
+.row{display:flex;align-items:center;gap:12px}
+.col{display:flex;flex-direction:column}
+.grow{flex:1;min-width:0}
+
+/* demo switcher */
+.switcher{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:4px;background:#14281C;padding:4px;border-radius:999px;box-shadow:0 8px 24px rgba(20,40,28,.25)}
+.switcher button{height:34px;padding:0 14px;border:0;border-radius:999px;background:transparent;color:#C9D6CC;font-size:13px;font-weight:600;white-space:nowrap}
+.switcher button[aria-pressed="true"]{background:#F4C542;color:#14281C}
+
+/* stage + phone */
+.stage{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:64px 16px 24px}
+.phone{width:390px;height:844px;max-height:calc(100vh - 88px);min-height:640px;border-radius:40px;overflow:hidden;position:relative;background:#F1F4EC;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(20,40,28,.28)}
+.phone.dark{background:#14281C}
+@media (max-width:480px){
+  .stage{padding:56px 0 0;align-items:stretch}
+  .phone{width:100vw;height:calc(100dvh - 56px);max-height:none;min-height:0;border-radius:0;box-shadow:none}
+}
+.scroll{flex:1;overflow-y:auto;padding:24px 20px 28px;display:flex;flex-direction:column;gap:16px;-webkit-overflow-scrolling:touch}
+.scroll>*{flex-shrink:0}
+.card{background:#fff;border-radius:22px;padding:18px}
+.btn{height:48px;border:0;border-radius:14px;font-size:15px;font-weight:700;padding:0 16px}
+.btn-dark{background:#14281C;color:#fff}
+.btn-yellow{background:#F4C542;color:#14281C}
+.btn-green{background:#2F7D3B;color:#fff}
+.btn-ghost{background:transparent;color:#fff;border:1px solid #4A6553}
+.btn-outline{background:transparent;color:#14281C;border:2px solid #14281C}
+.btn[disabled]{cursor:not-allowed}
+.linkbtn{border:0;background:transparent;font-size:13px;font-weight:600;text-decoration:underline;text-underline-offset:3px;height:40px}
+.chip{display:inline-flex;align-items:center;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;white-space:nowrap}
+.av{display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:800;font-family:'Bricolage Grotesque',Inter,sans-serif}
+.filters{display:flex;gap:8px;overflow-x:auto;margin:0 -20px;padding:0 20px 2px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.fbtn{flex-shrink:0;height:40px;padding:0 16px;border-radius:999px;border:1px solid #D3DCD5;background:#fff;color:#14281C;font-size:14px;font-weight:600}
+.fbtn[aria-pressed="true"]{background:#14281C;color:#fff;border-color:#14281C}
+.track{height:8px;background:#E3EADF;border-radius:999px;overflow:hidden}
+.track>div{height:100%;border-radius:999px}
+.art{display:block;width:100%;overflow:hidden}
+.art svg{display:block;width:100%;height:100%}
+
+/* nav */
+.nav{flex-shrink:0;height:80px;background:#fff;border-top:1px solid #E3EADF;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:0 6px 10px}
+.nav button{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;font-weight:600;color:#7A8A7F}
+.nav button[aria-current="page"]{color:#14281C}
+
+/* screen time bar */
+.stb-fill{height:14px;border-radius:999px;width:0;transition:width 900ms cubic-bezier(.22,1,.36,1),background-color 700ms ease}
+
+/* overlays + motion */
+.toast{position:absolute;top:16px;left:20px;right:20px;z-index:20;background:#14281C;color:#fff;border-radius:16px;padding:12px 12px 12px 14px;display:flex;align-items:center;gap:12px;font-size:14px;font-weight:600;animation:tgDrop .35s cubic-bezier(.22,1,.36,1) both}
+.overlay{position:absolute;inset:0;z-index:30;background:rgba(10,20,14,.8);display:flex;align-items:center;justify-content:center;padding:20px;overflow:hidden}
+.sheet-wrap{position:absolute;inset:0;z-index:25;background:rgba(20,40,28,.4);display:flex;align-items:flex-end}
+.sheet{width:100%;background:#FFFDF8;border-radius:28px 28px 0 0;padding:12px 24px 32px;display:flex;flex-direction:column;gap:18px;animation:tgSheet .35s cubic-bezier(.22,1,.36,1) both}
+@keyframes tgPop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.05);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes tgFall{0%{transform:translateY(-40px) rotate(0);opacity:1}100%{transform:translateY(900px) rotate(540deg);opacity:.9}}
+@keyframes tgPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+@keyframes tgSheet{0%{transform:translateY(100%)}100%{transform:translateY(0)}}
+@keyframes tgDrop{0%{transform:translateY(-20px);opacity:0}100%{transform:translateY(0);opacity:1}}
+.pop{animation:tgPop .55s cubic-bezier(.2,.9,.3,1.2) both}
+.confetti{position:absolute;top:0;width:8px;height:14px;border-radius:2px;animation-name:tgFall;animation-timing-function:ease-in;animation-iteration-count:infinite}
+.pulse{display:inline-block;animation:tgPulse 1.6s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.pop,.confetti,.pulse,.sheet,.toast{animation:none}.stb-fill{transition:none}}
+
+/* partner portal */
+.portal{min-height:100vh;background:#F1F4EC;padding-top:56px}
+.portal header{background:#fff;border-bottom:1px solid #E3EADF}
+.wrap{max-width:1440px;margin:0 auto;padding:14px 32px}
+.pbody{max-width:1440px;margin:0 auto;padding:24px 32px 48px;display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.side{flex:1 1 200px;max-width:100%;display:flex;flex-direction:column;gap:4px}
+.side button{height:44px;border:0;border-radius:12px;background:transparent;color:#56675B;font-size:15px;font-weight:600;text-align:left;padding:0 14px}
+.side button[aria-current="page"]{background:#fff;color:#14281C;font-weight:700;box-shadow:inset 3px 0 0 #2F7D3B}
+.pmain{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.tbl{min-width:860px}
+.tr{display:grid;grid-template-columns:44px minmax(220px,2fr) minmax(170px,1.6fr) 1fr 1fr 1fr .9fr;gap:12px;align-items:center;padding:12px;border-bottom:1px solid #EEF2EB;font-size:14px}
+.th{font-size:12px;font-weight:600;color:#56675B;text-transform:uppercase;letter-spacing:.05em;padding-top:0;border-bottom-color:#E3EADF}
+.r{text-align:right}
+.sbtn{height:36px;padding:0 12px;border:0;border-radius:10px;background:#F1F4EC;color:#56675B;font-size:13px;font-weight:600}
+.sbtn[aria-pressed="true"]{background:#E6F1E3;color:#1F5A29}
+@media (max-width:640px){.wrap,.pbody{padding-left:16px;padding-right:16px}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function(){
+'use strict';
+
+/* ---------------- state ---------------- */
+var S = {
+  view: 'start', tab: 'today',
+  seeds: 1240, used: 165, goal: 240,
+  devOpen: false, settingsOpen: false,
+  brk: 'idle', remaining: 30, toast: '', cat: 'all',
+  status: { nike: 'active', xceed: 'active', oysho: 'done' },
+  prog: { nike: 2, xceed: 4, oysho: 4 },
+  codes: {},
+  xf: 'all', entries: { bernabeu: 2 }, won: {}, unlocked: {},
+  red: 31, weekEarned: 320, win: null,
+  wins: [{ title: 'Youth football clinic invite', note: 'Surprise at 25% less screen time · you + a parent' }],
+  niche: 'sports', sort: 'score'
+};
+var timer = null, toastTimer = null, lastFill = 0, lastColor = '#5FA86A', lastKey = '';
+
+/* ---------------- helpers ---------------- */
+function fmt(m){ m = Math.max(0, Math.round(m)); var h = Math.floor(m/60), r = m%60; return h ? (r ? h+'h '+r+'m' : h+'h') : r+'m'; }
+function num(n){ return Number(n).toLocaleString('en-US'); }
+function k(n){ return n >= 1000 ? (n/1000).toFixed(1).replace('.0','')+'k' : String(n); }
+function mix(a,b,t){
+  function p(h){ return [1,3,5].map(function(i){ return parseInt(h.slice(i,i+2),16); }); }
+  var A=p(a), B=p(b); t=Math.max(0,Math.min(1,t));
+  return '#'+A.map(function(v,i){ return Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0'); }).join('');
+}
+function colorFor(r){
+  var g='#5FA86A', y='#E6B94E', c='#E8866E';
+  if (r <= .5) return g;
+  if (r <= .9) return mix(g,y,(r-.5)/.4);
+  if (r <= 1) return y;
+  return mix(y,c,(r-1)/.12);
+}
+function barState(){
+  var r = S.used / Math.max(1,S.goal), over = S.used > S.goal;
+  var msg = 'You’re doing great. Keep it up.';
+  if (over) msg = 'Goal passed. A walk could reset your day.';
+  else if (r >= .5) msg = 'Almost at your goal. Time to touch some grass?';
+  return { pct: Math.min(r,1)*100, color: colorFor(r), msg: msg, over: over,
+    left: over ? fmt(S.used-S.goal)+' over' : fmt(S.goal-S.used)+' left' };
+}
+function $(sel){ return document.querySelector(sel); }
+
+/* ---------------- icons ---------------- */
+var I = {
+  seed: function(s,c){ return '<svg aria-hidden="true" width="'+(s||18)+'" height="'+(s||18)+'" viewBox="0 0 24 24" fill="none" stroke="'+(c||'currentColor')+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21v-9"/><path d="M12 12C12 8 9 6 5 6c0 4 3 6 7 6z"/><path d="M12 10c0-3 2.5-5 6-5 0 3-2.5 5-6 5z"/></svg>'; },
+  check: function(s,c){ return '<svg aria-hidden="true" width="'+(s||18)+'" height="'+(s||18)+'" viewBox="0 0 24 24" fill="none" stroke="'+(c||'currentColor')+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>'; },
+  x: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  arrow: '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  chev: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>',
+  gift: function(c){ return '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="'+(c||'currentColor')+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 12h18"/><path d="M12 8c-2-4-6-4-6-1s6 1 6 1zM12 8c2-4 6-4 6-1s-6 1-6 1z"/></svg>'; },
+  shield: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2F7D3B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>',
+  trophy: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>',
+  gear: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  code: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg>',
+  plus: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  minus: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg>',
+  tToday: '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  tChal: '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>',
+  tExp: '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v8a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2z"/><path d="M12 9l1 2 2 .3-1.5 1.4.4 2.1-1.9-1-1.9 1 .4-2.1L9 11.3l2-.3z"/></svg>',
+  tAct: '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>'
+};
+
+/* ---------------- artwork ---------------- */
+var ART = {
+stadium:'<rect width="350" height="160" fill="#0E1B3A"/><circle cx="70" cy="14" r="1.4" fill="#fff" opacity=".7"/><circle cx="150" cy="22" r="1.2" fill="#fff" opacity=".6"/><circle cx="210" cy="10" r="1.4" fill="#fff" opacity=".7"/><circle cx="260" cy="26" r="1.1" fill="#fff" opacity=".5"/><path d="M28 24 L130 112 L60 124 Z" fill="#FFF3B0" opacity=".14"/><path d="M322 24 L220 112 L290 124 Z" fill="#FFF3B0" opacity=".14"/><rect x="26" y="24" width="4" height="62" fill="#33416A"/><rect x="320" y="24" width="4" height="62" fill="#33416A"/><rect x="16" y="14" width="24" height="11" rx="2" fill="#FFF3B0"/><rect x="310" y="14" width="24" height="11" rx="2" fill="#FFF3B0"/><path d="M0 160 V76 Q175 28 350 76 V160 Z" fill="#22306A"/><path d="M0 90 Q175 46 350 90" stroke="#3A4A8C" stroke-width="6" fill="none" stroke-dasharray="3 4"/><path d="M0 102 Q175 62 350 102" stroke="#4B5DA8" stroke-width="6" fill="none" stroke-dasharray="3 4"/><path d="M0 96 Q175 54 350 96" stroke="#FFF3B0" stroke-width="3" fill="none" stroke-dasharray="1 23"/><path d="M0 160 V112 Q175 82 350 112 V160 Z" fill="#1A2552"/><path d="M48 160 L92 104 L258 104 L302 160 Z" fill="#2F8F4E"/><path d="M78 122 L272 122 L282 136 L68 136 Z" fill="#2A8046"/><path d="M92 104 L258 104 L302 160 M48 160 L92 104 M70 133 L280 133" stroke="#fff" stroke-width="1.5" fill="none" opacity=".85"/><ellipse cx="175" cy="133" rx="30" ry="7" stroke="#fff" stroke-width="1.5" fill="none" opacity=".85"/>',
+vip:'<rect width="350" height="160" fill="#14281C"/><rect y="138" width="350" height="22" fill="#2F7D3B"/><path d="M0 138 H350" stroke="#fff" stroke-width="2" opacity=".7"/><path d="M150 0 L168 40 M200 0 L182 40" stroke="#E6F1E3" stroke-width="5"/><g transform="rotate(-6 175 88)"><rect x="112" y="40" width="126" height="90" rx="12" fill="#F4C542"/><rect x="160" y="34" width="30" height="12" rx="3" fill="#14281C"/><text x="175" y="94" text-anchor="middle" font-family="Bricolage Grotesque, Inter, sans-serif" font-size="38" font-weight="800" fill="#14281C">VIP</text><text x="175" y="114" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" font-weight="700" letter-spacing="2" fill="#14281C">PITCH ACCESS</text></g><circle cx="285" cy="112" r="26" fill="#fff"/><path d="M285 100 L296 108 L292 121 L278 121 L274 108 Z" fill="#14281C"/><path d="M60 40 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4z" fill="#F4C542"/><path d="M90 100 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z" fill="#F4C542" opacity=".8"/><path d="M300 40 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z" fill="#F4C542" opacity=".8"/>',
+concert:'<rect width="350" height="160" fill="#1B1036"/><path d="M175 0 L118 160 H232 Z" fill="#F4C542" opacity=".2"/><path d="M40 0 L110 160 H170 Z" fill="#FF6B9A" opacity=".24"/><path d="M310 0 L180 160 H240 Z" fill="#6BC5FF" opacity=".24"/><circle cx="40" cy="6" r="9" fill="#FF6B9A"/><circle cx="175" cy="6" r="9" fill="#F4C542"/><circle cx="310" cy="6" r="9" fill="#6BC5FF"/><rect y="114" width="350" height="12" fill="#2C1E52"/><rect x="165" y="90" width="20" height="24" rx="4" fill="#0B0618"/><circle cx="175" cy="84" r="8" fill="#0B0618"/><path d="M30 142 L20 116 M118 140 L128 112 M244 142 L256 114 M312 140 L322 118" stroke="#0B0618" stroke-width="6" stroke-linecap="round"/>'+(function(){var s='';for(var i=0;i<16;i++){s+='<circle cx="'+(14+i*22)+'" cy="'+(i%2?142:145)+'" r="10" fill="#0B0618"/>';}return s;})()+'<rect y="150" width="350" height="10" fill="#0B0618"/>',
+festival:'<rect width="350" height="160" fill="#FFD27A"/><circle cx="285" cy="42" r="26" fill="#FFF1C2"/><path d="M0 26 Q90 50 180 26 Q260 46 350 24" stroke="#14281C" stroke-width="1" fill="none"/><path d="M20 31 l8 14 8 -12z M60 40 l8 14 8 -12z M100 44 l8 13 8 -13z M140 38 l8 13 8 -14z M200 32 l8 13 8 -13z M240 37 l8 13 8 -13z M280 34 l8 13 8 -14z" fill="#E4572E"/><path d="M0 160 V110 Q90 70 180 108 T350 96 V160 Z" fill="#7CB342"/><path d="M200 124 L240 68 L280 124 Z" fill="#3A5BA0"/><path d="M240 68 V50 L256 56 L240 62" fill="#F4C542" stroke="#14281C" stroke-width="1"/><path d="M56 130 L90 80 L124 130 Z" fill="#E4572E"/><path d="M90 80 L80 130 M90 80 L100 130" stroke="#fff" stroke-width="3"/><path d="M0 160 V130 Q120 104 230 128 T350 122 V160 Z" fill="#2F7D3B"/><rect x="150" y="96" width="34" height="22" rx="3" fill="#14281C"/><path d="M146 96 H188" stroke="#14281C" stroke-width="4"/>',
+fashion:'<rect width="350" height="160" fill="#1E1A24"/><ellipse cx="175" cy="58" rx="70" ry="16" fill="#FFF3D6" opacity=".12"/><path d="M150 58 L200 58 L290 160 L60 160 Z" fill="#EDE6DA"/><path d="M175 58 V160" stroke="#D3C7B4" stroke-width="2"/><g fill="#F4C542"><circle cx="140" cy="80" r="2.5"/><circle cx="124" cy="100" r="2.5"/><circle cx="106" cy="122" r="2.5"/><circle cx="86" cy="146" r="2.5"/><circle cx="210" cy="80" r="2.5"/><circle cx="226" cy="100" r="2.5"/><circle cx="244" cy="122" r="2.5"/><circle cx="264" cy="146" r="2.5"/></g><rect x="0" y="98" width="70" height="62" fill="#2E2836"/><rect x="280" y="98" width="70" height="62" fill="#2E2836"/><g fill="#2E2836"><circle cx="18" cy="96" r="8"/><circle cx="44" cy="94" r="8"/><circle cx="306" cy="94" r="8"/><circle cx="332" cy="96" r="8"/></g><path d="M175 62 l-7 22 h14 z" fill="#14281C"/><circle cx="175" cy="58" r="5" fill="#14281C"/><text x="175" y="30" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" font-weight="700" letter-spacing="6" fill="#EDE6DA">FASHION WEEK</text>',
+brand:'<rect width="350" height="160" fill="#14281C"/><text x="175" y="30" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="700" letter-spacing="5" fill="#C9D6CC">MEMBERS ONLY</text><rect x="132" y="74" width="86" height="64" rx="6" fill="#F4C542"/><rect x="124" y="60" width="102" height="20" rx="4" fill="#FFD966"/><rect x="170" y="60" width="10" height="78" fill="#E4572E"/><path d="M175 60 C160 40 140 46 150 58 Z M175 60 C190 40 210 46 200 58 Z" fill="#E4572E"/><path d="M70 70 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4z" fill="#F4C542"/><path d="M280 54 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z" fill="#F4C542"/><path d="M266 118 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z" fill="#fff" opacity=".7"/>'
+};
+function art(kind,h){ return '<div class="art" style="height:'+h+'px"><svg aria-hidden="true" viewBox="0 0 350 160" preserveAspectRatio="xMidYMid slice">'+(ART[kind]||ART.stadium)+'</svg></div>'; }
+
+/* ---------------- data ---------------- */
+var CAT_LABELS = { sports: 'Sports', experiences: 'Experiences', style: 'Style & gear' };
+function challengeDefs(){
+  return [
+    { id:'nike', brand:'Nike', cat:'sports', title:'Just run it, phone-free', desc:'Log three runs this week with your phone on Do Not Disturb the whole time.', reward:'20% off running shoes', seeds:150, days:7, joined:'12.4k', total:3, unit:'runs', next:'one more run before Sunday.', left:3 },
+    { id:'xceed', brand:'Xceed', cat:'experiences', title:'Live music, phone down', desc:'Stay under 2 hours of screen time a day for a full week.', reward:'2 all-ages concert tickets (you + a parent)', seeds:250, days:7, joined:'8.9k', total:7, unit:'days', next:'stay under 2h today, you’re at '+fmt(S.used)+'.', left:3 },
+    { id:'adidas', brand:'Adidas', cat:'sports', title:'Five-a-side, zero screens', desc:'Play two football matches and keep those days under 2 hours of screen time.', reward:'€25 Adidas voucher', seeds:200, days:14, joined:'9.7k', total:2, unit:'matches', next:'play your first match.', left:14 },
+    { id:'casio', brand:'Casio', cat:'style', title:'Analog week', desc:'Check the time on a watch, not your phone. Unlock your phone fewer than 40 times a day for 5 days.', reward:'15% off a Casio watch', seeds:180, days:5, joined:'5.2k', total:5, unit:'days', next:'keep unlocks under 40 today.', left:5 },
+    { id:'fourvenues', brand:'Fourvenues', cat:'experiences', title:'Evenings offline', desc:'Keep evening screen time under 30 minutes for four nights.', reward:'Entry for 2 to an all-ages daytime show', seeds:160, days:10, joined:'6.3k', total:4, unit:'nights', next:'under 30 min after 8pm tonight.', left:10 },
+    { id:'decathlon', brand:'Decathlon', cat:'sports', title:'Weekend outside', desc:'Less than one hour of screen time on both Saturday and Sunday.', reward:'€20 Decathlon voucher', seeds:220, days:7, joined:'11.1k', total:2, unit:'days', next:'Saturday is your first day.', left:4 },
+    { id:'oysho', brand:'Oysho', cat:'style', title:'Yoga flow, phone in the locker', desc:'Complete four 30-minute grass breaks in one week.', reward:'20% off activewear', seeds:120, days:7, joined:'7.8k', total:4, unit:'breaks', next:'', left:0, code:'TG-OYS-4821' },
+    { id:'newbalance', brand:'New Balance', cat:'sports', title:'Long run, no notifications', desc:'One run of 10 km or more with notifications fully off.', reward:'€15 off your next pair', seeds:140, days:14, joined:'4.6k', total:1, unit:'run', next:'plan your long run.', left:14 }
+  ];
+}
+var EXPERIENCES = [
+  { id:'bernabeu', kind:'stadium', type:'draw', title:'Real Madrid at the Santiago Bernabéu', sub:'Two match tickets for you and a parent or guardian, plus a club scarf each.', cost:50, closes:'Closes in 5 days' },
+  { id:'vip', kind:'vip', type:'unlock', title:'VIP football day', sub:'Stadium tour, pitch-side photos and a training session with youth academy coaches.', cost:2000 },
+  { id:'concert', kind:'concert', type:'draw', title:'Arena concert tickets', sub:'Two tickets to a major all-ages tour date in Madrid.', cost:40, closes:'Closes in 9 days' },
+  { id:'festival', kind:'festival', type:'draw', title:'Music festival day passes', sub:'Two day passes to an all-ages summer festival.', cost:40, closes:'Closes in 12 days' },
+  { id:'fashion', kind:'fashion', type:'draw', title:'Madrid Fashion Week invite', sub:'A show invitation and backstage tour for two.', cost:60, closes:'Closes in 20 days' },
+  { id:'brand', kind:'brand', type:'unlock', title:'Sneaker launch preview', sub:'A members-only partner event before release day, with a gift bag.', cost:1000 }
+];
+var SURPRISES = {
+  40: { kind:'concert', title:'Concert soundcheck pass', sub:'Watch a headliner’s soundcheck before doors open, for you and a parent.' },
+  50: { kind:'fashion', title:'Front row at Fashion Week', sub:'Two front-row seats at a Madrid Fashion Week show for you and a parent.' }
+};
+var MILESTONES = [
+  { at:10, title:'Explorer badge', sub:'Unlocked in week 2' },
+  { at:25, title:'Surprise: youth football clinic', sub:'Invitation for you + a parent' },
+  { at:40 }, { at:50 }
+];
+var PARTNERS = {
+  sports: { label:'Sports', list:[
+    ['Nike','Sportswear',95,24600,16,6,9,'Just run it, phone-free',71],
+    ['Adidas','Sportswear',91,21300,14,5,7,'Five-a-side, zero screens',66],
+    ['Red Bull','Energy & events',86,17800,12,4,14,'Get outside for the weekend',58],
+    ['Puma','Sportswear',79,13900,10,3,4,'Sprint session unplugged',63],
+    ['Stride Running Co.','Running gear · you',76,12900,9,3,18,'Run 5K phone-free',68],
+    ['New Balance','Running & lifestyle',73,11200,8,3,11,'Long run, no notifications',70],
+    ['Oysho','Activewear',68,9400,11,4,16,'Yoga flow, phone in the locker',64],
+    ['Decathlon','Sports retail',64,8700,7,2,-3,'Try a new sport offline',55],
+    ['Under Armour','Training gear',57,6100,6,2,-6,'Gym hour, no scrolling',52]
+  ]},
+  outdoors: { label:'Outdoors', list:[
+    ['Trailhead Outfitters','Hiking gear',89,16300,10,4,9,'Weekend summit, phone off',66],
+    ['Ridge & Rope','Guided climbs',77,11200,7,3,4,'Sunrise ridge walk',59],
+    ['Wildmap Hikes','Trail app',70,9400,13,5,15,'Paper map Saturday',52],
+    ['Canopy Camping','Campsites',61,6100,5,2,-3,'One night off-grid',47],
+    ['Riverbend Kayak','Kayak rental',52,4300,3,1,1,'Paddle, don’t post',58]
+  ]},
+  food: { label:'Food & Drink', list:[
+    ['Greenleaf Café','Café chain',94,21800,16,6,7,'Coffee, no phone',74],
+    ['Daily Grind Roasters','Coffee roaster',83,14600,9,3,11,'Slow pour morning',69],
+    ['Market Table','Restaurants',71,9100,6,2,-2,'Phone-free dinner for two',62],
+    ['Picnic Basket Co.','Picnic delivery',63,6700,8,3,14,'Lunch in the park',55],
+    ['Juice Yard','Juice bars',55,4800,4,1,-6,'Fresh start, no feed',51]
+  ]},
+  wellness: { label:'Wellness', list:[
+    ['Stillwater Spa','Day spas',86,12700,6,2,5,'Two hours of quiet',71],
+    ['Summit Yoga','Yoga studios',80,11900,12,4,10,'Mat, not screen',67],
+    ['Breathwork Studio','Classes',68,7300,9,3,21,'Breathe before you browse',58],
+    ['Rest Club','Sleep app',57,5200,5,2,-5,'Phone out of the bedroom',44]
+  ]},
+  culture: { label:'Culture', list:[
+    ['Museum Pass Network','Museums',90,17500,8,3,6,'One gallery, no photos',64],
+    ['Paperback Corner','Bookshops',75,10300,11,4,13,'Read a chapter instead',61],
+    ['Open Air Cinema','Outdoor screenings',69,8200,5,2,2,'Big screen, small screen off',70],
+    ['Gallery Walks','Guided tours',54,4100,4,1,-7,'Walk the old town',53]
+  ]}
+};
+
+/* ---------------- actions ---------------- */
+function set(patch){ Object.assign(S, patch); render(); }
+function toast(msg){ clearTimeout(toastTimer); set({ toast: msg }); toastTimer = setTimeout(function(){ if (S.toast === msg) set({ toast: '' }); }, 4500); }
+function stat(id){ return S.status[id] || 'open'; }
+function prog(id){ return S.prog[id] || 0; }
+function findCh(id){ return challengeDefs().filter(function(d){ return d.id === id; })[0]; }
+function findEx(id){ return EXPERIENCES.filter(function(e){ return e.id === id; })[0]; }
+function addWin(w, note){ return [{ title: w.title, note: note + ' · Details sent to your guardian' }].concat(S.wins); }
+
+var A = {
+  view: function(v){ S.view = v; if (v === 'member') { lastFill = 0; } render(); window.scrollTo(0,0); },
+  tab: function(t){ set({ tab: t }); },
+  startBreak: function(){
+    clearInterval(timer); set({ brk: 'running', remaining: 30 });
+    timer = setInterval(function(){
+      var left = S.remaining - 1;
+      if (left <= 0) { clearInterval(timer); timer = null; S.brk = 'idle'; S.remaining = 30; S.seeds += 40; toast('Break complete! +40 seeds added.'); }
+      else set({ remaining: left });
+    }, 1000);
+  },
+  endBreak: function(){ clearInterval(timer); timer = null; S.brk = 'idle'; S.remaining = 30; toast('Break ended early. No seeds this time.'); },
+  dismissToast: function(){ set({ toast: '' }); },
+  cat: function(c){ set({ cat: c }); },
+  join: function(id){ var d = findCh(id); S.status[id] = 'active'; S.prog[id] = 0; toast('You joined ' + d.brand + '’s “' + d.title + '”. Track it in Active.'); },
+  log: function(id){
+    var d = findCh(id), n = prog(id) + 1;
+    if (n >= d.total) { S.status[id] = 'done'; S.prog[id] = d.total; S.seeds += d.seeds; toast(d.brand + ' challenge complete! +' + d.seeds + ' seeds and your reward is unlocked.'); }
+    else { S.prog[id] = n; toast('Progress logged: ' + n + ' of ' + d.total + ' ' + d.unit + '.'); }
+  },
+  reveal: function(id){ S.codes[id] = true; render(); },
+  xf: function(f){ set({ xf: f }); },
+  enter: function(id){
+    var e = findEx(id), n = S.entries[id] || 0;
+    if (S.seeds < e.cost) return toast('Not enough seeds for another entry yet.');
+    if (n >= 10) return toast('That’s the max of 10 entries for this draw.');
+    S.seeds -= e.cost; S.entries[id] = n + 1; toast('Entry ' + (n + 1) + ' added to the ' + e.title + ' draw. Good luck!');
+  },
+  draw: function(id){ var e = findEx(id); S.won[id] = true; var w = { kicker:'You won!', kind:e.kind, title:e.title, sub:e.sub }; set({ win: w, wins: addWin(w, 'Won in a prize draw') }); },
+  unlock: function(id){ var e = findEx(id); S.seeds -= e.cost; S.unlocked[id] = true; var w = { kicker:'Unlocked!', kind:e.kind, title:e.title, sub:e.sub }; set({ win: w, wins: addWin(w, 'Unlocked with seeds') }); },
+  simulate: function(){
+    var red = Math.min(S.red + 5, 60), hit = [40,50].filter(function(t){ return S.red < t && red >= t; })[0];
+    S.red = red; S.seeds += 120; S.weekEarned += 120;
+    if (hit) { var sp = SURPRISES[hit]; var w = { kicker:'Surprise reward!', kind:sp.kind, title:sp.title, sub:sp.sub }; set({ win: w, wins: addWin(w, 'Surprise at ' + hit + '% less screen time') }); }
+    else toast('Great week! +120 seeds. You’re now at ' + red + '% less screen time.');
+  },
+  closeWin: function(){ set({ win: null }); },
+  toggleDev: function(){ set({ devOpen: !S.devOpen }); },
+  openSettings: function(){ set({ settingsOpen: true }); },
+  closeSettings: function(){ set({ settingsOpen: false }); },
+  goalDown: function(){ set({ goal: Math.max(60, S.goal - 30) }); },
+  goalUp: function(){ set({ goal: Math.min(600, S.goal + 30) }); },
+  niche: function(n){ set({ niche: n }); },
+  sort: function(s){ set({ sort: s }); }
+};
+
+document.addEventListener('click', function(ev){
+  var el = ev.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  ev.preventDefault();
+  var fn = A[el.getAttribute('data-act')];
+  if (fn) fn(el.getAttribute('data-id'));
+});
+document.addEventListener('input', function(ev){
+  if (ev.target.id !== 'devSlider') return;
+  S.used = Number(ev.target.value);
+  updateBarText(); animateBar();
+});
+document.addEventListener('change', function(ev){ if (ev.target.id === 'devSlider') render(); });
+document.addEventListener('keydown', function(ev){
+  if (ev.key !== 'Escape') return;
+  if (S.win) set({ win: null }); else if (S.settingsOpen) set({ settingsOpen: false });
+});
+
+/* ---------------- screen time bar ---------------- */
+function updateBarText(){
+  var b = barState(), el;
+  if ((el = $('#stbNum'))) el.textContent = fmt(S.used);
+  if ((el = $('#stbMsg'))) el.textContent = b.msg;
+  if ((el = $('#stbPill'))) { el.textContent = b.left; el.style.background = b.over ? '#FBE3DC' : '#EEF4EA'; el.style.color = b.over ? '#8A3A26' : '#1F5A29'; }
+  if ((el = $('#devVal'))) el.textContent = fmt(S.used);
+  if ((el = $('#stbBar'))) { el.setAttribute('aria-valuenow', Math.min(S.used, S.goal)); el.setAttribute('aria-valuetext', fmt(S.used) + ' of ' + fmt(S.goal) + ' goal'); }
+}
+function animateBar(){
+  var f = $('#stbFill'); if (!f) return;
+  var b = barState();
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){ f.style.width = b.pct + '%'; f.style.backgroundColor = b.color; }); });
+  lastFill = b.pct; lastColor = b.color;
+}
+function screenTimeCard(){
+  var b = barState();
+  return '<div class="col" style="gap:10px">'+
+  '<section aria-label="Screen time" style="position:relative;background:#FFFDF8;border-radius:24px;padding:24px 20px 22px;box-shadow:0 6px 24px rgba(20,40,28,.08)">'+
+    '<div style="position:absolute;top:12px;right:10px;display:flex;gap:2px">'+
+      '<button type="button" data-act="toggleDev" aria-label="Demo controls" aria-pressed="'+S.devOpen+'" style="width:36px;height:36px;border:0;border-radius:10px;background:transparent;color:#A3B0A6;display:flex;align-items:center;justify-content:center">'+I.code+'</button>'+
+      '<button type="button" data-act="openSettings" aria-label="Screen time settings" style="width:44px;height:44px;border:0;border-radius:12px;background:transparent;color:#56675B;display:flex;align-items:center;justify-content:center">'+I.gear+'</button>'+
+    '</div>'+
+    '<div class="col" style="gap:16px">'+
+      '<div class="col" style="gap:4px"><span id="stbNum" style="font-size:44px;font-weight:700;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums">'+fmt(S.used)+'</span><span class="muted" style="font-size:13px;font-weight:500">screen time today</span></div>'+
+      '<div class="row">'+
+        '<div id="stbBar" role="progressbar" aria-label="Screen time today" aria-valuemin="0" aria-valuemax="'+S.goal+'" aria-valuenow="'+Math.min(S.used,S.goal)+'" aria-valuetext="'+fmt(S.used)+' of '+fmt(S.goal)+' goal" style="flex:1;height:14px;background:#ECE8DF;border-radius:999px;overflow:hidden"><div id="stbFill" class="stb-fill" style="width:'+lastFill+'%;background-color:'+lastColor+'"></div></div>'+
+        '<span class="muted" style="font-size:13px;font-weight:600;white-space:nowrap">'+fmt(S.goal)+' goal</span>'+
+      '</div>'+
+      '<div class="row" style="justify-content:space-between"><span id="stbMsg" style="font-size:14px;line-height:1.4">'+b.msg+'</span><span id="stbPill" class="chip" style="background:'+(b.over?'#FBE3DC':'#EEF4EA')+';color:'+(b.over?'#8A3A26':'#1F5A29')+';font-variant-numeric:tabular-nums">'+b.left+'</span></div>'+
+    '</div>'+
+    (S.devOpen ? '<div class="col" style="margin-top:16px;padding:12px;border:1px dashed #C9D2C6;border-radius:14px;gap:6px"><label for="devSlider" class="muted" style="font-size:12px;font-weight:600;display:flex;justify-content:space-between"><span>Demo: screen time today</span><span id="devVal">'+fmt(S.used)+'</span></label><input id="devSlider" type="range" min="0" max="480" step="5" value="'+S.used+'" style="width:100%;accent-color:#2F7D3B"></div>' : '')+
+  '</section>'+
+  '<div style="align-self:center;display:flex;align-items:center;gap:8px;background:#E9EFE3;color:#1F5A29;border-radius:999px;padding:7px 12px 7px 9px;font-size:13px;font-weight:600">'+I.seed(16)+'<span>Stay under your goal to earn points</span><span style="background:#fff;color:#14281C;border-radius:999px;padding:2px 8px;font-weight:700">'+num(S.seeds)+' pts</span></div>'+
+  '</div>';
+}
+
+/* ---------------- member: tabs ---------------- */
+function today(){
+  var open = challengeDefs().filter(function(d){ return stat(d.id) === 'open'; }).length;
+  var active = challengeDefs().filter(function(d){ return stat(d.id) === 'active'; }).length;
+  var labels = ['Thu','Fri','Sat','Sun','Mon','Tue','Wed'], mins = [212,168,171,145,121,98,S.used];
+  var max = Math.max.apply(null, [240, S.goal + 30].concat(mins));
+  var avg = Math.round(mins.reduce(function(a,b){ return a+b; },0) / mins.length);
+  var bars = mins.map(function(m,i){ return '<div title="'+labels[i]+': '+fmt(m)+'" style="height:'+Math.round(m/max*120)+'px;background:'+(m<=S.goal?'#2F7D3B':'#EAB15A')+';border-radius:8px 8px 4px 4px"></div>'; }).join('');
+  var lbls = labels.map(function(l){ return '<span class="muted" style="font-size:12px;text-align:center">'+l.charAt(0)+'</span>'; }).join('');
+  var cats = [['Social',72],['Video',45],['Messaging',31],['Everything else',17]].map(function(c){
+    return '<div class="col" style="gap:6px"><div style="display:flex;justify-content:space-between;font-size:14px"><span style="font-weight:600">'+c[0]+'</span><span class="muted">'+fmt(c[1])+'</span></div><div class="track" style="height:6px"><div style="width:'+Math.min(100,Math.round(c[1]/Math.max(S.used,165)*100))+'%;background:#14281C"></div></div></div>';
+  }).join('');
+  var brk = S.brk === 'running'
+    ? '<div style="background:#14281C;color:#fff;border-radius:24px;padding:20px" class="col"><div class="col" style="gap:14px"><span style="font-size:13px;font-weight:600;color:#F4C542;letter-spacing:.06em;text-transform:uppercase">Break in progress</span><div style="display:flex;align-items:baseline;gap:8px"><span class="d" style="font-size:52px;font-weight:800;letter-spacing:-.03em">'+S.remaining+'</span><span style="font-size:16px;color:#C9D6CC">min left</span></div><div class="track" style="background:#2C4434"><div style="width:'+Math.round((30-S.remaining)/30*100)+'%;background:#F4C542"></div></div><p style="font-size:13px;color:#C9D6CC">Prototype runs fast: one second equals one minute.</p><button type="button" class="btn btn-ghost" data-act="endBreak">End early</button></div></div>'
+    : '<div style="background:#14281C;color:#fff;border-radius:24px;padding:20px" class="col"><div class="col" style="gap:14px"><div class="col" style="gap:6px"><h2 class="d" style="font-size:22px;font-weight:700">Take a grass break</h2><p style="font-size:14px;line-height:1.45;color:#C9D6CC">Lock your phone for 30 minutes and go outside. Finish to earn 40 seeds.</p></div><button type="button" class="btn btn-ghost" data-act="startBreak">Start 30-min break</button></div></div>';
+  return ''+
+  '<section style="background:#F4C542;border-radius:28px;padding:22px 20px 20px" class="col"><div class="col" style="gap:16px">'+
+    '<div class="row" style="justify-content:space-between"><span style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">'+open+' brand challenges open</span><div aria-hidden="true" style="display:flex">'+['N','A','C','X','F'].map(function(b){ return '<span class="av" style="width:30px;height:30px;margin-left:-8px;border-radius:999px;background:#14281C;color:#fff;border:2px solid #F4C542;font-size:12px">'+b+'</span>'; }).join('')+'</div></div>'+
+    '<div class="col" style="gap:8px"><h2 class="d" style="font-size:32px;font-weight:800;letter-spacing:-.03em;line-height:1">Put your phone down. Get rewarded.</h2><p style="font-size:15px;line-height:1.45">Gear discounts, watches and concert tickets from Nike, Adidas, Casio, Xceed and more.</p></div>'+
+    '<button type="button" class="btn btn-dark" data-act="tab" data-id="challenges" style="height:60px;border-radius:18px;font-size:18px;display:flex;align-items:center;justify-content:center;gap:10px">Join a challenge'+I.arrow+'</button>'+
+    '<button type="button" class="linkbtn" data-act="tab" data-id="active" style="color:#14281C;font-size:14px;height:44px">'+active+' challenges in progress · see where you’re at</button>'+
+  '</div></section>'+
+  '<section style="background:#0E1B3A;color:#fff;border-radius:24px;overflow:hidden" class="col">'+art('stadium',120)+
+    '<div class="col" style="padding:16px 18px 18px;gap:10px"><span style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#F4C542">Exclusive experiences</span><h2 class="d" style="font-size:22px;font-weight:700;line-height:1.15">Win 2 tickets to Real Madrid at the Bernabéu</h2><p style="font-size:14px;line-height:1.45;color:#C9D3EA">For you and a parent. Enter with the seeds you earn by putting your phone down.</p><button type="button" class="btn" data-act="tab" data-id="experiences" style="border:2px solid #F4C542;background:transparent;color:#F4C542">See all experiences</button></div>'+
+  '</section>'+
+  screenTimeCard()+
+  brk+
+  '<div class="card col" style="gap:14px;border-radius:24px"><div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="font-size:16px;font-weight:700">Last 7 days</h2><span class="muted" style="font-size:13px">avg '+fmt(avg)+' / day</span></div>'+
+    '<div style="position:relative;height:120px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;align-items:end"><div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:'+Math.round(S.goal/max*120)+'px;border-top:2px dashed #9AAA9E"></div>'+bars+'</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;margin-top:-6px">'+lbls+'</div>'+
+    '<div class="muted" style="display:flex;gap:16px;font-size:12px;flex-wrap:wrap"><span class="row" style="gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#2F7D3B"></span>Under goal</span><span class="row" style="gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#EAB15A"></span>Over goal</span><span class="row" style="gap:6px"><span style="width:12px;border-top:2px dashed #9AAA9E"></span>'+fmt(S.goal)+' goal</span></div>'+
+  '</div>'+
+  '<div class="card col" style="gap:14px;border-radius:24px"><h2 style="font-size:16px;font-weight:700">Where today went</h2>'+cats+'</div>';
+}
+
+function challenges(){
+  var filters = [['all','All'],['sports','Sports'],['experiences','Experiences'],['style','Style & gear']].map(function(f){
+    return '<button type="button" class="fbtn" data-act="cat" data-id="'+f[0]+'" aria-pressed="'+(S.cat===f[0])+'">'+f[1]+'</button>';
+  }).join('');
+  var cards = challengeDefs().filter(function(d){ return S.cat === 'all' || d.cat === S.cat; }).map(function(d){
+    var st = stat(d.id), action;
+    if (st === 'open') action = '<button type="button" class="btn btn-dark" data-act="join" data-id="'+d.id+'" style="height:50px;font-size:16px">Join challenge</button>';
+    else if (st === 'active') action = '<button type="button" class="btn" data-act="tab" data-id="active" style="height:50px;border:2px solid #2F7D3B;background:transparent;color:#1F5A29;display:flex;align-items:center;justify-content:center;gap:8px">'+I.check(18)+'Joined · '+prog(d.id)+' of '+d.total+' '+d.unit+'</button>';
+    else action = '<div style="height:50px;border-radius:14px;background:#E6F1E3;color:#1F5A29;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center">Completed · reward unlocked</div>';
+    return '<article class="card col" style="gap:14px">'+
+      '<div class="row"><span class="av" style="width:44px;height:44px;border-radius:14px;background:#14281C;color:#fff;font-size:18px">'+d.brand.charAt(0)+'</span><div class="grow col" style="gap:1px"><span style="font-size:15px;font-weight:700">'+d.brand+'</span><span class="muted" style="font-size:12px">'+CAT_LABELS[d.cat]+' · '+d.days+' days · '+d.joined+' joined</span></div><span class="chip" style="background:#E6F1E3;color:#1F5A29">+'+d.seeds+' seeds</span></div>'+
+      '<div class="col" style="gap:4px"><h2 class="d" style="font-size:21px;font-weight:700;letter-spacing:-.01em">'+d.title+'</h2><p class="muted" style="font-size:14px;line-height:1.45">'+d.desc+'</p></div>'+
+      '<div class="row" style="gap:10px;background:#FBEFC4;border-radius:14px;padding:12px 14px">'+I.gift('#14281C')+'<span style="font-size:14px;font-weight:600">'+d.reward+'</span></div>'+
+      action+'</article>';
+  }).join('');
+  return '<div class="filters" role="group" aria-label="Filter challenges">'+filters+'</div>'+cards+'<p class="muted" style="font-size:12px;text-align:center">Prototype: brands shown for illustration only.</p>';
+}
+
+function expActions(e, dark){
+  var n = S.entries[e.id] || 0, afford = S.seeds >= e.cost, won = !!S.won[e.id], unl = !!S.unlocked[e.id];
+  var main = dark ? 'btn-yellow' : 'btn-dark', soft = dark ? 'background:#1E2D57;color:#fff' : 'background:#E6F1E3;color:#1F5A29';
+  var h = dark ? 52 : 48;
+  if (e.type === 'draw') {
+    if (won) return '<div style="height:'+h+'px;border-radius:14px;background:#F4C542;color:#14281C;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800">You won this one!</div>';
+    if (n > 0) return '<div class="col" style="gap:6px"><div style="display:flex;gap:8px"><span style="flex:1;height:'+h+'px;border-radius:14px;'+soft+';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">'+n+(n===1?' entry':' entries')+'</span><button type="button" class="btn '+main+'" data-act="enter" data-id="'+e.id+'" style="flex:1;height:'+h+'px;font-size:14px">+1 entry · '+num(e.cost)+'</button></div><button type="button" class="linkbtn" data-act="draw" data-id="'+e.id+'" style="color:'+(dark?'#fff':'#14281C')+'">See draw result (demo)</button></div>';
+    if (!afford) return '<button type="button" class="btn" disabled style="height:'+h+'px;'+(dark?'background:#1E2D57;color:#C9D3EA':'background:#E3EADF;color:#56675B')+'">'+num(e.cost-S.seeds)+' more seeds needed</button>';
+    return '<button type="button" class="btn '+main+'" data-act="enter" data-id="'+e.id+'" style="height:'+h+'px">Enter draw · '+num(e.cost)+' seeds</button>';
+  }
+  if (unl) return '<div style="height:48px;border-radius:14px;background:#E6F1E3;color:#1F5A29;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">Unlocked · details sent to your guardian</div>';
+  if (afford) return '<button type="button" class="btn btn-green" data-act="unlock" data-id="'+e.id+'">Unlock · '+num(e.cost)+' seeds</button>';
+  var pct = Math.min(100, Math.round(S.seeds/e.cost*100));
+  return '<div class="col" style="gap:6px"><div class="track" style="height:10px"><div style="width:'+pct+'%;background:#2F7D3B"></div></div><span class="muted" style="font-size:13px"><strong style="color:#14281C">'+pct+'% there.</strong> '+num(e.cost-S.seeds)+' more seeds needed to unlock.</span></div>';
+}
+
+function experiences(){
+  var base = 195, now = Math.round(base*(1-S.red/100));
+  var ms = MILESTONES.map(function(m){
+    var reached = S.red >= m.at, sp = SURPRISES[m.at];
+    return { at:m.at, reached:reached, title: m.title || (reached ? 'Surprise: '+sp.title : 'Mystery reward'), sub: m.sub || (reached ? 'For you + a parent' : 'Reach '+m.at+'% less screen time to reveal it') };
+  });
+  var dots = ms.map(function(m){ return '<span style="position:absolute;top:3px;left:'+(m.at/50*100)+'%;width:18px;height:18px;margin-left:-9px;border-radius:999px;background:'+(m.reached?'#F4C542':'#4A6553')+';border:2px solid #14281C"></span>'; }).join('');
+  var rows = ms.map(function(m){
+    return '<div class="row"><span class="av" style="width:34px;height:34px;border-radius:999px;background:'+(m.reached?'#F4C542':'#213A2A')+';color:#14281C">'+(m.reached ? I.check(16) : '<span class="pulse" style="color:#F4C542;font-size:16px">?</span>')+'</span><div class="grow col" style="gap:1px"><span style="font-size:14px;font-weight:700">'+m.title+'</span><span style="font-size:12px;color:#C9D6CC">'+m.sub+'</span></div><span style="font-size:12px;font-weight:700;color:#C9D6CC">−'+m.at+'%</span></div>';
+  }).join('');
+  var wins = S.wins.length ? '<section class="card col" style="gap:10px;padding:16px 18px"><h2 style="font-size:16px;font-weight:700">Your wins</h2>'+S.wins.map(function(w){ return '<div class="row" style="font-size:14px"><span class="av" style="width:34px;height:34px;border-radius:10px;background:#FBEFC4;color:#14281C">'+I.trophy+'</span><div class="grow col"><span style="font-weight:700">'+w.title+'</span><span class="muted" style="font-size:12px">'+w.note+'</span></div></div>'; }).join('')+'</section>' : '';
+  var f = EXPERIENCES[0];
+  var featured = '<article style="background:#0E1B3A;color:#fff;border-radius:26px;overflow:hidden" class="col"><div style="position:relative">'+art(f.kind,190)+'<span class="chip" style="position:absolute;top:12px;left:12px;background:#F4C542;color:#14281C;font-weight:800">Featured draw</span><span class="chip" style="position:absolute;top:12px;right:12px;background:#0E1B3A;color:#fff">'+f.closes+'</span></div>'+
+    '<div class="col" style="padding:18px;gap:12px"><h2 class="d" style="font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1.1">'+f.title+'</h2><p style="font-size:14px;line-height:1.45;color:#C9D3EA">'+f.sub+'</p>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px">'+['Ages 13–17','+1 parent or guardian',num(f.cost)+' seeds per entry'].map(function(t){ return '<span class="chip" style="background:#1E2D57;color:#fff;font-weight:600">'+t+'</span>'; }).join('')+'</div>'+
+    expActions(f,true)+'</div></article>';
+  var xf = [['all','All'],['draw','Prize draws'],['unlock','Unlock now']].map(function(x){ return '<button type="button" class="fbtn" data-act="xf" data-id="'+x[0]+'" aria-pressed="'+(S.xf===x[0])+'">'+x[1]+'</button>'; }).join('');
+  var list = EXPERIENCES.slice(1).filter(function(e){ return S.xf === 'all' || e.type === S.xf; }).map(function(e){
+    return '<article class="col" style="background:#fff;border-radius:22px;overflow:hidden"><div style="position:relative">'+art(e.kind,150)+'<span class="chip" style="position:absolute;top:12px;left:12px;background:#fff;color:#14281C">'+(e.type==='draw'?'Prize draw':'Unlock with seeds')+'</span><span class="chip" style="position:absolute;top:12px;right:12px;background:#14281C;color:#fff">13–17 + parent</span></div>'+
+      '<div class="col" style="padding:16px;gap:10px"><div class="col" style="gap:4px"><h2 class="d" style="font-size:20px;font-weight:700;line-height:1.15">'+e.title+'</h2><p class="muted" style="font-size:14px;line-height:1.45">'+e.sub+'</p><span class="muted" style="font-size:12px;font-weight:600">'+(e.type==='draw' ? e.closes+' · max 10 entries' : 'Guaranteed once unlocked')+'</span></div>'+expActions(e,false)+'</div></article>';
+  }).join('');
+  return ''+
+  '<div class="row" style="gap:10px;background:#fff;border-radius:14px;padding:10px 12px;font-size:13px;line-height:1.4">'+I.shield+'<span><strong>Guardian linked.</strong> Every experience is for ages 13–17 plus one parent or guardian, who approves your entries.</span></div>'+
+  '<section style="background:#14281C;color:#fff;border-radius:24px;padding:20px" class="col"><div class="col" style="gap:16px">'+
+    '<div class="row" style="justify-content:space-between;align-items:flex-start"><div class="col" style="gap:2px"><span style="font-size:13px;color:#C9D6CC">Your seeds</span><span class="d" style="font-size:40px;font-weight:800;letter-spacing:-.03em;line-height:1">'+num(S.seeds)+'</span></div><span class="chip" style="background:#213A2A;color:#F4C542;font-size:13px;padding:6px 12px">+'+S.weekEarned+' this week</span></div>'+
+    '<p style="font-size:14px;line-height:1.45;color:#E7EEE8">You’re on your phone <strong style="color:#F4C542">'+S.red+'% less</strong> than your first week ('+fmt(base)+' → '+fmt(now)+' a day). Hit milestones to trigger surprise rewards.</p>'+
+    '<div style="position:relative;height:24px;margin:0 9px"><div style="position:absolute;left:0;right:0;top:9px;height:6px;background:#2C4434;border-radius:999px"></div><div style="position:absolute;left:0;top:9px;height:6px;width:'+Math.min(100,Math.round(S.red/50*100))+'%;background:#F4C542;border-radius:999px;transition:width .6s ease"></div>'+dots+'</div>'+
+    '<div class="col" style="gap:10px">'+rows+'</div>'+
+    '<button type="button" class="btn btn-ghost" data-act="simulate" style="height:44px;font-size:14px;font-weight:600">Simulate a great week (demo)</button>'+
+  '</div></section>'+
+  wins+featured+
+  '<div class="filters" role="group" aria-label="Filter experiences">'+xf+'</div>'+list+
+  '<p class="muted" style="font-size:12px;line-height:1.5;text-align:center">Free to enter. Seeds can only be earned, never bought. Draws are for ages 13–17 with a parent or guardian’s approval, and an adult attends every experience. Prototype: prizes shown for illustration.</p>';
+}
+
+function activeTab(){
+  var defs = challengeDefs();
+  var act = defs.filter(function(d){ return stat(d.id) === 'active'; });
+  var done = defs.filter(function(d){ return stat(d.id) === 'done'; });
+  var friends = [['Maya','1h 52m'],['You','2h 33m',1],['Theo','3h 05m'],['Sam','4h 20m']].map(function(f,i){
+    return '<div class="row" style="font-size:14px"><span class="muted" style="width:20px;font-weight:600">'+(i+1)+'</span><span class="av" style="width:34px;height:34px;border-radius:999px;background:'+(f[2]?'#2F7D3B':'#E3EADF')+';color:'+(f[2]?'#fff':'#14281C')+';font-size:13px;font-family:Inter,sans-serif;font-weight:700">'+f[0].charAt(0)+'</span><span class="grow" style="font-weight:'+(f[2]?700:500)+'">'+f[0]+'</span><span class="muted">'+f[1]+' / day</span></div>';
+  }).join('');
+  var stats = [[act.length,'in progress'],[done.length,'completed'],[6,'day streak']].map(function(s){ return '<div style="background:#fff;border-radius:16px;padding:12px" class="col"><span class="d" style="font-size:26px;font-weight:800">'+s[0]+'</span><span class="muted" style="font-size:12px">'+s[1]+'</span></div>'; }).join('');
+  var empty = act.length ? '' : '<div class="card col" style="align-items:center;gap:12px;text-align:center;padding:24px 20px"><h2 style="font-size:18px;font-weight:700">No active challenges</h2><p class="muted" style="font-size:14px">Pick one from a brand you like and start earning.</p><button type="button" class="btn btn-dark" data-act="tab" data-id="challenges">Browse challenges</button></div>';
+  var cards = act.map(function(d){
+    var n = prog(d.id), pct = Math.round(n/d.total*100), steps = '';
+    for (var i=0;i<d.total;i++) steps += '<div style="height:10px;border-radius:999px;background:'+(i<n?'#2F7D3B':'#E3EADF')+'"></div>';
+    return '<article class="card col" style="gap:14px">'+
+      '<div class="row"><span class="av" style="width:40px;height:40px;border-radius:12px;background:#14281C;color:#fff">'+d.brand.charAt(0)+'</span><div class="grow col" style="gap:1px"><span class="muted" style="font-size:12px;font-weight:600">'+d.brand+'</span><h2 style="font-size:17px;font-weight:700">'+d.title+'</h2></div><span class="chip" style="background:#FBEFC4;color:#9A5B0B">'+d.left+(d.left===1?' day left':' days left')+'</span></div>'+
+      '<div class="col" style="gap:8px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span class="d" style="font-size:28px;font-weight:800">'+pct+'%</span><span style="font-size:14px;font-weight:600">'+n+' of '+d.total+' '+d.unit+'</span></div><div style="display:grid;grid-template-columns:repeat('+d.total+',minmax(0,1fr));gap:4px">'+steps+'</div></div>'+
+      '<p class="muted" style="font-size:14px;line-height:1.45"><strong style="color:#14281C">Next:</strong> '+d.next+'</p>'+
+      '<div class="row" style="gap:10px;border-top:1px solid #E3EADF;padding-top:12px;font-size:13px">'+I.gift('#2F7D3B')+'<span class="grow">Unlocks <strong>'+d.reward+'</strong></span><button type="button" data-act="log" data-id="'+d.id+'" style="height:36px;padding:0 12px;border:0;border-radius:10px;background:#E6F1E3;color:#1F5A29;font-size:13px;font-weight:700">Log progress</button></div>'+
+    '</article>';
+  }).join('');
+  var doneHtml = done.length ? '<h2 style="font-size:17px;font-weight:700;margin-top:4px">Completed</h2>' + done.map(function(d){
+    var code = d.code || ('TG-'+d.id.slice(0,3).toUpperCase()+'-'+(1000+d.seeds*7));
+    return '<article style="background:#14281C;color:#fff;border-radius:22px;padding:18px" class="col"><div class="col" style="gap:12px"><div class="row"><span class="av" style="width:40px;height:40px;border-radius:12px;background:#F4C542;color:#14281C">'+d.brand.charAt(0)+'</span><div class="grow col" style="gap:1px"><span style="font-size:12px;color:#C9D6CC;font-weight:600">'+d.brand+'</span><span style="font-size:16px;font-weight:700">'+d.title+'</span></div></div><span style="font-size:14px;color:#E7EEE8">Reward unlocked: <strong style="color:#F4C542">'+d.reward+'</strong></span>'+
+      (S.codes[d.id] ? '<div style="background:#213A2A;border-radius:12px;padding:12px;text-align:center;font-family:ui-monospace,Menlo,monospace;font-size:20px;font-weight:700;letter-spacing:.12em">'+code+'</div>' : '<button type="button" class="btn btn-yellow" data-act="reveal" data-id="'+d.id+'" style="height:46px">Show reward code</button>')+
+    '</div></article>';
+  }).join('') : '';
+  return '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">'+stats+'</div>'+empty+cards+doneHtml+
+    '<div class="card col" style="gap:12px"><h2 style="font-size:17px;font-weight:700">Friends this week</h2>'+friends+'</div>';
+}
+
+/* ---------------- member: shell ---------------- */
+function member(){
+  var heads = { today:['Wednesday, 11 November','Today'], challenges:['Created by brands','Challenges'], experiences:['Win it by looking up','Experiences'], active:['Where you’re at','Your active challenges'] };
+  var body = S.tab === 'challenges' ? challenges() : S.tab === 'experiences' ? experiences() : S.tab === 'active' ? activeTab() : today();
+  var tabs = [['today','Today',I.tToday],['challenges','Challenges',I.tChal],['experiences','Experiences',I.tExp],['active','Active',I.tAct]].map(function(t){
+    return '<button type="button" data-act="tab" data-id="'+t[0]+'"'+(S.tab===t[0]?' aria-current="page"':'')+'>'+t[2]+t[1]+'</button>';
+  }).join('');
+  var toastHtml = S.toast ? '<div class="toast" role="status"><span class="av" style="width:28px;height:28px;border-radius:999px;background:#F4C542;color:#14281C">'+I.seed(16)+'</span><span class="grow">'+S.toast+'</span><button type="button" data-act="dismissToast" aria-label="Dismiss" style="background:transparent;border:0;color:#fff;width:32px;height:32px;display:flex;align-items:center;justify-content:center">'+I.x+'</button></div>' : '';
+  var settings = S.settingsOpen ? '<div class="sheet-wrap"><div class="sheet" role="dialog" aria-modal="true" aria-label="Settings"><span aria-hidden="true" style="align-self:center;width:40px;height:5px;border-radius:999px;background:#D8DDD3"></span><h2 class="d" style="font-size:24px;font-weight:800">Settings</h2><div class="col" style="gap:10px"><span style="font-size:14px;font-weight:700">Daily screen time goal</span><div class="row" style="justify-content:space-between;background:#F1F4EC;border-radius:18px;padding:10px"><button type="button" data-act="goalDown" aria-label="Decrease goal by 30 minutes" style="width:52px;height:52px;border:0;border-radius:14px;background:#fff;color:#14281C;display:flex;align-items:center;justify-content:center">'+I.minus+'</button><span aria-live="polite" style="font-size:32px;font-weight:700;letter-spacing:-.02em">'+fmt(S.goal)+'</span><button type="button" data-act="goalUp" aria-label="Increase goal by 30 minutes" style="width:52px;height:52px;border:0;border-radius:14px;background:#fff;color:#14281C;display:flex;align-items:center;justify-content:center">'+I.plus+'</button></div><span class="muted" style="font-size:13px;line-height:1.45">Adjust in 30-minute steps. You earn points for every 15 minutes you stay under it.</span></div><button type="button" class="btn btn-dark" data-act="closeSettings" style="height:52px;font-size:16px">Done</button></div></div>' : '';
+  var win = '';
+  if (S.win) {
+    var colors = ['#F4C542','#2F7D3B','#FF6B9A','#6BC5FF','#E4572E','#FFFFFF'], conf = '';
+    for (var i=0;i<32;i++) conf += '<span class="confetti" style="left:'+((i*37+7)%100)+'%;animation-delay:'+((i%10)*.17).toFixed(2)+'s;animation-duration:'+(2.2+(i%5)*.35).toFixed(2)+'s;background:'+colors[i%6]+'"></span>';
+    win = '<div class="overlay"><div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none">'+conf+'</div>'+
+      '<div class="pop col" role="dialog" aria-modal="true" aria-label="'+S.win.kicker+'" style="position:relative;width:100%;background:#fff;border-radius:28px;overflow:hidden">'+art(S.win.kind,170)+
+      '<div class="col" style="padding:20px;align-items:center;gap:12px;text-align:center"><span class="chip" style="background:#F4C542;color:#14281C;font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:6px 14px">'+S.win.kicker+'</span><h2 class="d" style="font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.1">'+S.win.title+'</h2><p class="muted" style="font-size:14px;line-height:1.45">'+S.win.sub+'</p>'+
+      '<div class="row" style="gap:10px;align-items:flex-start;text-align:left;background:#E6F1E3;border-radius:14px;padding:12px;font-size:13px;line-height:1.45">'+I.shield+'<span>We’ve sent the details to your parent or guardian to confirm. One adult goes with you.</span></div>'+
+      '<button type="button" class="btn btn-dark" data-act="closeWin" style="width:100%;height:52px;font-size:16px">Amazing!</button></div></div></div>';
+  }
+  return '<div class="stage"><div class="phone">'+settings+win+toastHtml+
+    '<div class="scroll" id="scroll">'+
+      '<div class="row" style="justify-content:space-between"><div class="col grow" style="gap:2px"><span class="muted" style="font-size:13px;font-weight:500">'+heads[S.tab][0]+'</span><h1 class="d" style="font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.1">'+heads[S.tab][1]+'</h1></div><div aria-label="Seed balance" class="row" style="flex-shrink:0;gap:6px;background:#fff;border-radius:999px;padding:8px 14px 8px 10px;font-weight:700;font-size:15px">'+I.seed(18,'#2F7D3B')+'<span>'+num(S.seeds)+'</span></div></div>'+
+      body+
+    '</div><nav class="nav" aria-label="Main">'+tabs+'</nav></div></div>';
+}
+
+/* ---------------- start ---------------- */
+function start(){
+  return '<div class="stage"><div class="phone dark" style="color:#fff;justify-content:space-between;padding:56px 24px 40px">'+
+    '<div class="col" style="gap:20px"><span class="av" style="width:64px;height:64px;border-radius:20px;background:#F4C542;color:#14281C">'+I.seed(36)+'</span><h1 class="d" style="font-size:52px;font-weight:800;letter-spacing:-.03em;line-height:.95">TouchGrass</h1><p style="font-size:18px;line-height:1.45;color:#C9D6CC">Less scrolling, more living. Members earn seeds for time off their phones; partner brands turn those seeds into real-world rewards.</p></div>'+
+    '<div class="col" style="gap:12px">'+
+      '<button type="button" data-act="view" data-id="member" class="row" style="gap:14px;background:#F4C542;color:#14281C;border:0;border-radius:18px;padding:18px;text-align:left"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg><span class="grow col" style="gap:2px"><span style="font-size:17px;font-weight:700">I’m a member</span><span style="font-size:13px">Track screen time, earn and spend seeds</span></span>'+I.chev+'</button>'+
+      '<button type="button" data-act="view" data-id="partner" class="row" style="gap:14px;background:transparent;color:#fff;border:2px solid #4A6553;border-radius:18px;padding:16px 18px;text-align:left"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-6h6v6"/></svg><span class="grow col" style="gap:2px"><span style="font-size:17px;font-weight:700">I’m a partner brand</span><span style="font-size:13px;color:#C9D6CC">Publish challenges, see your niche</span></span>'+I.chev+'</button>'+
+    '</div></div></div>';
+}
+
+/* ---------------- partner ---------------- */
+function partner(){
+  var niche = PARTNERS[S.niche], MINE = 'sports';
+  var objs = niche.list.map(function(p){ return { name:p[0], tag:p[1], score:p[2], members:p[3], published:p[4], live:p[5], trend:p[6], ch:p[7], completion:p[8], me:p[0]==='Stride Running Co.' }; });
+  var tones = [['#E6F1E3','#1F5A29'],['#FBEFC4','#5C4500'],['#E3EAF4','#1E3A5F'],['#F3E6DF','#6B2F14']];
+  var sortKeys = { score:'Popularity', published:'Challenges published', members:'Members joined', trend:'Trend' };
+  var sorted = objs.slice().sort(function(a,b){ return b[S.sort]-a[S.sort]; });
+  function sum(k2){ return objs.reduce(function(a,p){ return a+p[k2]; },0); }
+  var byScore = objs.slice().sort(function(a,b){ return b.score-a.score; });
+  var kpis = [['Active partners',objs.length,'publishing in '+niche.label],['Challenges published',sum('published'),'in the last 30 days'],['Live right now',sum('live'),'open for members to join'],['Members reached',k(sum('members')),'joined a challenge this month']].map(function(x){
+    return '<div class="card col" style="gap:4px;border-radius:18px"><span class="muted" style="font-size:13px;font-weight:500">'+x[0]+'</span><span class="d" style="font-size:34px;font-weight:800;letter-spacing:-.02em">'+x[1]+'</span><span class="muted" style="font-size:12px">'+x[2]+'</span></div>';
+  }).join('');
+  var nicheBtns = Object.keys(PARTNERS).map(function(key){ return '<button type="button" class="fbtn" data-act="niche" data-id="'+key+'" aria-pressed="'+(S.niche===key)+'">'+PARTNERS[key].label+(key===MINE?' · yours':'')+'</button>'; }).join('');
+  var pos;
+  if (S.niche === MINE) {
+    var me = objs.filter(function(p){ return p.me; })[0], rank = byScore.indexOf(me)+1, lead = byScore[0];
+    var avgPub = sum('published')/objs.length, avgMem = sum('members')/objs.length;
+    var maxPub = Math.max.apply(null, objs.map(function(p){ return p.published; })), maxMem = Math.max.apply(null, objs.map(function(p){ return p.members; }));
+    var cmp = [['Challenges published',me.published,avgPub.toFixed(1),me.published/maxPub,avgPub/maxPub],['Members joined',k(me.members),k(Math.round(avgMem)),me.members/maxMem,avgMem/maxMem]].map(function(c){
+      return '<div class="col" style="gap:6px"><div style="display:flex;justify-content:space-between;font-size:13px;gap:8px"><span>'+c[0]+'</span><span style="color:#C9D6CC">You '+c[1]+' · niche avg '+c[2]+'</span></div><div style="position:relative;height:8px;background:#2C4434;border-radius:999px"><div style="height:8px;width:'+Math.round(c[3]*100)+'%;background:#F4C542;border-radius:999px"></div><div aria-hidden="true" style="position:absolute;top:-3px;left:'+Math.round(c[4]*100)+'%;width:2px;height:14px;background:#fff"></div></div></div>';
+    }).join('');
+    pos = '<section style="background:#14281C;color:#fff;border-radius:20px;padding:22px" class="col"><div class="col" style="gap:16px"><h2 style="font-size:16px;font-weight:700;color:#C9D6CC">Your position</h2><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span class="d" style="font-size:56px;font-weight:800;letter-spacing:-.03em;color:#F4C542">#'+rank+'</span><span style="font-size:15px;color:#C9D6CC">of '+objs.length+' partners by popularity</span></div><div class="col" style="gap:10px">'+cmp+'</div><p style="font-size:14px;line-height:1.5;color:#E7EEE8">'+lead.name+' leads with '+lead.published+' challenges this month, '+(lead.published-me.published)+' more than you. Your growth (+'+me.trend+'%) is the fastest in Sports.</p></div></section>';
+  } else {
+    pos = '<section style="background:#fff;border:2px dashed #B8C6BB;border-radius:20px;padding:22px" class="col"><div class="col" style="gap:12px;align-items:flex-start"><h2 style="font-size:18px;font-weight:700">Browsing outside your niche</h2><p class="muted" style="font-size:14px;line-height:1.5">Stride Running Co. competes in Sports. Partners here aren’t ranked against you, but they can be good co-challenge collaborators.</p><button type="button" class="btn btn-outline" data-act="niche" data-id="sports" style="height:44px;font-size:14px">Back to Sports</button></div></section>';
+  }
+  var top = objs.slice().sort(function(a,b){ return b.members-a.members; }).slice(0,3).map(function(p,i){
+    return '<div class="row" style="padding-top:12px;border-top:1px solid #E3EADF"><span class="d muted" style="width:28px;font-size:20px;font-weight:800">'+(i+1)+'</span><div class="grow col" style="gap:2px"><span style="font-size:15px;font-weight:700">'+p.ch+'</span><span class="muted" style="font-size:13px">'+p.name+'</span></div><div class="col" style="align-items:flex-end;gap:2px"><span style="font-size:14px;font-weight:700">'+k(Math.round(p.members*.27/10)*10)+' joined</span><span class="muted" style="font-size:12px">'+p.completion+'% finish</span></div></div>';
+  }).join('');
+  var sorts = Object.keys(sortKeys).map(function(key){ return '<button type="button" class="sbtn" data-act="sort" data-id="'+key+'" aria-pressed="'+(S.sort===key)+'">'+sortKeys[key]+'</button>'; }).join('');
+  var rows = sorted.map(function(p,i){
+    var t = tones[i%4];
+    return '<div class="tr" style="'+(p.me?'background:#E6F1E3;border-radius:12px':'')+'"><span class="muted" style="font-weight:700">'+(i+1)+'</span>'+
+      '<span class="row" style="gap:10px;min-width:0"><span class="av" style="width:34px;height:34px;border-radius:10px;background:'+(p.me?'#2F7D3B':t[0])+';color:'+(p.me?'#fff':t[1])+';font-family:Inter,sans-serif;font-weight:700">'+p.name.charAt(0)+'</span><span class="col" style="min-width:0"><span style="font-weight:700">'+p.name+'</span><span class="muted" style="font-size:12px">'+p.tag+'</span></span></span>'+
+      '<span class="row" style="gap:10px"><span class="track grow"><div style="width:'+p.score+'%;background:#2F7D3B"></div></span><span style="width:28px;text-align:right;font-weight:700">'+p.score+'</span></span>'+
+      '<span class="r">'+num(p.members)+'</span><span class="r" style="font-weight:700">'+p.published+'</span><span class="r">'+p.live+'</span>'+
+      '<span class="r" style="font-weight:700;color:'+(p.trend>=0?'#2F7D3B':'#9A5B0B')+'">'+(p.trend>=0?'↑ +':'↓ ')+p.trend+'%</span></div>';
+  }).join('');
+  var sideItems = ['Overview','Market','My challenges','Rewards catalog','Members','Settings'].map(function(s){ return '<button type="button"'+(s==='Market'?' aria-current="page"':'')+'>'+s+'</button>'; }).join('');
+  return '<div class="portal">'+
+    '<header><div class="wrap row" style="justify-content:space-between;flex-wrap:wrap"><div class="row" style="gap:10px"><span class="av" style="width:38px;height:38px;border-radius:12px;background:#14281C;color:#F4C542">'+I.seed(22)+'</span><span class="d" style="font-size:22px;font-weight:800;letter-spacing:-.02em">TouchGrass</span><span class="chip" style="background:#E6F1E3;color:#1F5A29">Partners</span></div>'+
+      '<div class="row" style="flex-wrap:wrap"><div class="row" style="gap:10px"><span class="av" style="width:36px;height:36px;border-radius:999px;background:#2F7D3B;color:#fff;font-family:Inter,sans-serif;font-size:14px;font-weight:700">S</span><span class="col"><span style="font-size:14px;font-weight:700">Stride Running Co.</span><span class="muted" style="font-size:12px">Sports · Madrid</span></span></div><button type="button" class="btn btn-dark row" style="height:44px;font-size:14px;gap:8px">'+I.plus+'New challenge</button></div></div></header>'+
+    '<div class="pbody"><nav class="side" aria-label="Partner sections">'+sideItems+'</nav><main class="pmain">'+
+      '<div class="col" style="gap:6px"><span class="muted" style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Market · last 30 days</span><h1 class="d" style="font-size:clamp(28px,4vw,40px);font-weight:800;letter-spacing:-.02em">Active partners in '+niche.label+'</h1><p class="muted" style="font-size:15px;max-width:640px;line-height:1.5">See who else is rewarding members in your niche, how popular they are and how often they publish challenges.</p></div>'+
+      '<div role="group" aria-label="Niche" style="display:flex;flex-wrap:wrap;gap:8px">'+nicheBtns+'</div>'+
+      '<div class="kpis">'+kpis+'</div>'+
+      '<div class="two">'+pos+'<section class="card col" style="gap:14px;border-radius:20px;padding:22px"><div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="font-size:18px;font-weight:700">Most-joined challenges</h2><span class="muted" style="font-size:13px">'+niche.label+'</span></div>'+top+'</section></div>'+
+      '<section class="card col" style="gap:16px;border-radius:20px;padding:22px"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><h2 style="font-size:18px;font-weight:700">Partners ranked by '+sortKeys[S.sort].toLowerCase()+'</h2><div role="group" aria-label="Sort by" style="display:flex;flex-wrap:wrap;gap:6px">'+sorts+'</div></div>'+
+        '<div style="overflow-x:auto"><div class="tbl"><div class="tr th"><span>#</span><span>Partner</span><span>Popularity</span><span class="r">Members joined</span><span class="r">Challenges (30d)</span><span class="r">Live now</span><span class="r">Trend</span></div>'+rows+'</div></div>'+
+        '<p class="muted" style="font-size:12px">Popularity blends members joined, completion rate and reward redemptions (0–100). Prototype only: brands are shown for illustration, not as actual TouchGrass partners, and all figures are invented.</p></section>'+
+    '</main></div></div>';
+}
+
+/* ---------------- render ---------------- */
+function switcher(){
+  return '<nav class="switcher" aria-label="Prototype screens">'+[['start','Start'],['member','Member app'],['partner','Partner portal']].map(function(v){
+    return '<button type="button" data-act="view" data-id="'+v[0]+'" aria-pressed="'+(S.view===v[0])+'">'+v[1]+'</button>';
+  }).join('')+'</nav>';
+}
+function render(){
+  var key = S.view + ':' + S.tab, sc = document.getElementById('scroll'), top = sc ? sc.scrollTop : 0;
+  var focusId = document.activeElement && document.activeElement.closest ? document.activeElement.closest('[data-act]') : null;
+  var focusSig = focusId ? focusId.getAttribute('data-act') + '|' + focusId.getAttribute('data-id') : null;
+  var html = S.view === 'member' ? member() : S.view === 'partner' ? partner() : start();
+  document.getElementById('app').innerHTML = switcher() + html;
+  var sc2 = document.getElementById('scroll');
+  if (sc2) sc2.scrollTop = (key === lastKey) ? top : 0;
+  lastKey = key;
+  if (focusSig) {
+    var parts = focusSig.split('|');
+    var sel = '[data-act="'+parts[0]+'"]' + (parts[1] && parts[1] !== 'null' ? '[data-id="'+parts[1]+'"]' : '');
+    var el = document.querySelector(sel); if (el) el.focus({ preventScroll: true });
+  }
+  if (S.view === 'member' && S.tab === 'today') animateBar();
+}
+render();
+})();
+</script>
+</body>
+</html>
